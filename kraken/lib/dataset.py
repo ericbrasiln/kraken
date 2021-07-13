@@ -808,9 +808,9 @@ class BaselineSet(Dataset):
         self.aug = None
         self.targets = []
         # n-th entry contains semantic of n-th class
-        self.class_mapping = {'aux': {'_start_separator': 0, '_end_separator': 1}, 'baselines': {}, 'regions': {}}
+        self.class_mapping = {'aux': {'_separator': 0, '_top_separator': 1, '_bottom_separator': 2}, 'baselines': {}, 'regions': {}}
         self.class_stats = {'baselines': defaultdict(int), 'regions': defaultdict(int)}
-        self.num_classes = 2
+        self.num_classes = 3
         self.mbl_dict = merge_baselines if merge_baselines is not None else {}
         self.mreg_dict = merge_regions if merge_regions is not None else {}
         self.valid_baselines = valid_baselines
@@ -982,8 +982,9 @@ class BaselineSet(Dataset):
         image = self.tail_transforms(image)
         scale = image.shape[2]/orig_size[0]
         t = torch.zeros((self.num_classes,) + image.shape[1:])
-        start_sep_cls = self.class_mapping['aux']['_start_separator']
-        end_sep_cls = self.class_mapping['aux']['_end_separator']
+        sep_cls = self.class_mapping['aux']['_separator']
+        top_sep_cls = self.class_mapping['aux']['_top_separator']
+        bot_sep_cls = self.class_mapping['aux']['_bottom_separator']
 
         for key, lines in target['baselines'].items():
             try:
@@ -1000,18 +1001,27 @@ class BaselineSet(Dataset):
                 line_pol = np.array(shp_line.buffer(self.line_width/2, cap_style=2).boundary, dtype=np.int)
                 rr, cc = polygon(line_pol[:,1], line_pol[:,0], shape=image.shape[1:])
                 t[cls_idx, rr, cc] = 1
+                # top side
+                line_pol = np.array(shp_line.buffer(self.line_width/1.5, cap_style=2, single_sided=True).boundary, dtype=np.int)
+                rr, cc = polygon(line_pol[:,1], line_pol[:,0], shape=image.shape[1:])
+                t[top_sep_cls, rr, cc] = 1
+                # bottom side
+                line_pol = np.array(shp_line.buffer(-self.line_width/1.5, cap_style=2, single_sided=True).boundary, dtype=np.int)
+                rr, cc = polygon(line_pol[:,1], line_pol[:,0], shape=image.shape[1:])
+                t[bot_sep_cls, rr, cc] = 1
+
                 split_pt = shp_line.interpolate(split_offset).buffer(0.001)
                 # top
                 start_sep = np.array((split(shp_line, split_pt)[0].buffer(self.line_width, cap_style=3).boundary), dtype=np.int)
                 rr_s, cc_s = polygon(start_sep[:,1], start_sep[:,0], shape=image.shape[1:])
-                t[start_sep_cls, rr_s, cc_s] = 1
-                t[start_sep_cls, rr, cc] = 0
+                t[sep_cls, rr_s, cc_s] = 1
+                t[sep_cls, rr, cc] = 0
                 split_pt = shp_line.interpolate(-split_offset).buffer(0.001)
                 # top
                 end_sep = np.array((split(shp_line, split_pt)[-1].buffer(self.line_width, cap_style=3).boundary), dtype=np.int)
                 rr_s, cc_s = polygon(end_sep[:,1], end_sep[:,0], shape=image.shape[1:])
-                t[end_sep_cls, rr_s, cc_s] = 1
-                t[end_sep_cls, rr, cc] = 0
+                t[sep_cls, rr_s, cc_s] = 1
+                t[sep_cls, rr, cc] = 0
         for key, regions in target['regions'].items():
             try:
                 cls_idx = self.class_mapping['regions'][key]
