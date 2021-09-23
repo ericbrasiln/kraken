@@ -26,7 +26,6 @@ import pkg_resources
 
 from typing import Dict, Union, List, cast, Any, IO, Callable
 from functools import partial
-from itertools import cycle
 from PIL import Image
 
 import click
@@ -433,7 +432,7 @@ def segment(ctx, model, boxes, text_direction, scale, maxcolseps,
         logger.warning(f'Baseline model ({model}) given but legacy segmenter selected. Forcing to -bl.')
         boxes = False
 
-    if boxes == False:
+    if boxes is False:
         if not model:
             model = SEGMENTATION_DEFAULT_MODEL
         from kraken.lib.vgsl import TorchVGSLModel

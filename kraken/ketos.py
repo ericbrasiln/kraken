@@ -25,12 +25,10 @@ import unicodedata
 from click import open_file
 from bidi.algorithm import get_display
 
-from typing import cast, Set, List, IO, Any
-from collections import defaultdict
+from typing import cast, Set, List, IO, Any, Dict
 
 from kraken.lib import log
 from kraken.lib.exceptions import KrakenCairoSurfaceException
-from kraken.lib.exceptions import KrakenEncodeException
 from kraken.lib.exceptions import KrakenInputException
 from kraken.lib.default_specs import (SEGMENTATION_HYPER_PARAMS,
                                       RECOGNITION_HYPER_PARAMS,
@@ -41,6 +39,7 @@ APP_NAME = 'kraken'
 
 logging.captureWarnings(True)
 logger = logging.getLogger('kraken')
+
 
 def message(msg, **styles):
     if logger.getEffectiveLevel() >= 30:
@@ -81,13 +80,14 @@ def _expand_gt(ctx, param, value):
         images.extend([x for x in glob.iglob(expression, recursive=True) if os.path.isfile(x)])
     return images
 
+
 def _validate_merging(ctx, param, value):
     """
     Maps baseline/region merging to a dict of merge structures.
     """
     if not value:
         return None
-    merge_dict = {} # type: Dict[str, str]
+    merge_dict = {}  # type: Dict[str, str]
     try:
         for m in value:
             k, v = m.split(':')
@@ -95,6 +95,7 @@ def _validate_merging(ctx, param, value):
     except Exception:
         raise click.BadParameter('Mappings must be in format target:src')
     return merge_dict
+
 
 @cli.command('segtrain')
 @click.pass_context
@@ -173,8 +174,6 @@ def segtrain(ctx, output, spec, line_width, load, freq, quit, epochs,
     """
     Trains a baseline labeling model for layout analysis
     """
-    import re
-    import torch
     import shutil
     import numpy as np
 
@@ -184,11 +183,6 @@ def segtrain(ctx, output, spec, line_width, load, freq, quit, epochs,
         raise click.BadOptionUsage('resize', 'resize option requires loading an existing model')
 
     logger.info('Building ground truth set from {} document images'.format(len(ground_truth) + len(training_files)))
-
-
-    # load model if given. if a new model has to be created we need to do that
-    # after data set initialization, otherwise to output size is still unknown.
-    nn = None
 
     # populate hyperparameters from command line args
     hyper_params = SEGMENTATION_HYPER_PARAMS.copy()
@@ -207,8 +201,7 @@ def segtrain(ctx, output, spec, line_width, load, freq, quit, epochs,
                          'gamma': gamma,
                          'step_size': step_size,
                          'rop_patience': sched_patience,
-                         'cos_t_max': cos_max
-                        })
+                         'cos_t_max': cos_max})
 
     # disable automatic partition when given evaluation set explicitly
     if evaluation_files:
@@ -406,8 +399,7 @@ def train(ctx, batch_size, pad, output, spec, append, load, freq, quit, epochs,
                          'cos_t_max': cos_max,
                          'normalization': normalization,
                          'normalize_whitespace': normalize_whitespace,
-                         'augment': augment
-                        })
+                         'augment': augment})
 
     # disable automatic partition when given evaluation set explicitly
     if evaluation_files:
@@ -460,8 +452,8 @@ def train(ctx, batch_size, pad, output, spec, append, load, freq, quit, epochs,
                                                   resize=resize,
                                                   augment=augment)
 
-    with  log.progressbar(label='stage {}/{}'.format(1, trainer.stopper.epochs if trainer.stopper.epochs > 0 else '∞'),
-                          length=trainer.event_it, show_pos=True) as bar:
+    with log.progressbar(label='stage {}/{}'.format(1, trainer.stopper.epochs if trainer.stopper.epochs > 0 else '∞'),
+                         length=trainer.event_it, show_pos=True) as bar:
 
         def _draw_progressbar():
             bar.update(1)
@@ -534,10 +526,7 @@ def test(ctx, batch_size, model, evaluation_files, device, pad, threads,
     if not model:
         raise click.UsageError('No model to evaluate given.')
 
-    import regex
-    import unicodedata
     import numpy as np
-    from PIL import Image
     from torch.utils.data import DataLoader
 
     from kraken.serialization import render_report
@@ -571,7 +560,6 @@ def test(ctx, batch_size, model, evaluation_files, device, pad, threads,
         DatasetClass = PolygonGTDataset
     else:
         DatasetClass = GroundTruthDataset
-        t = []
         if force_binarization:
             logger.warning('Forced binarization enabled in `path` mode. Will be ignored.')
             force_binarization = False
@@ -877,8 +865,8 @@ def line_generator(ctx, font, maxlines, encoding, normalization, renormalize,
         for t in text:
             with click.open_file(t, encoding=encoding) as fp:
                 logger.info('Reading {}'.format(t))
-                for l in fp:
-                    lines.add(l.rstrip('\r\n'))
+                for line in fp:
+                    lines.add(line.rstrip('\r\n'))
     if normalization:
         lines = set([unicodedata.normalize(normalization, line) for line in lines])
     if strip:
