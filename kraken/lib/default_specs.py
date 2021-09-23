@@ -44,7 +44,7 @@ RECOGNITION_HYPER_PARAMS = {'pad': 16,
                             'rop_patience': 5,
                             # cosine
                             'cos_t_max': 50,
-                           }
+                            }
 
 SEGMENTATION_HYPER_PARAMS = {'line_width': 8,
                              'freq': 1.0,
@@ -59,13 +59,12 @@ SEGMENTATION_HYPER_PARAMS = {'line_width': 8,
                              'schedule': 'constant',
                              'completed_epochs': 0,
                              'augment': False,
-                            # lr scheduler params
-                            # step/exp decay
-                            'step_size': 10,
-                            'gamma': 0.1,
-                            # reduce on plateau
-                            'rop_patience': 5,
-                            # cosine
-                            'cos_t_max': 50,
-
-                           }
+                             # lr scheduler params
+                             # step/exp decay
+                             'step_size': 10,
+                             'gamma': 0.1,
+                             # reduce on plateau
+                             'rop_patience': 5,
+                             # cosine
+                             'cos_t_max': 50,
+                             }

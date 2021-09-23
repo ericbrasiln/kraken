@@ -28,6 +28,7 @@ class MultiParamSequential(Sequential):
                 inputs = module(inputs)
         return inputs
 
+
 def PeepholeLSTMCell(input: torch.Tensor,
                      hidden: Tuple[torch.Tensor, torch.Tensor],
                      w_ih: torch.Tensor,
