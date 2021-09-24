@@ -248,6 +248,29 @@ def _extend_boundaries(baselines, bin_bl_map):
     return baselines
 
 
+class LineMCP(MCP_Connect):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.connections = dict()
+        self.scores = defaultdict(lambda: np.inf)
+
+    def create_connection(self, id1, id2, pos1, pos2, cost1, cost2):
+        k = (min(id1, id2), max(id1, id2))
+        s = cost1 + cost2
+        if self.scores[k] > s:
+            self.connections[k] = (pos1, pos2, s)
+            self.scores[k] = s
+
+    def get_connections(self):
+        results = []
+        for k, (pos1, pos2, s) in self.connections.items():
+            results.append(np.concatenate([self.traceback(pos1), self.traceback(pos2)[::-1]]))
+        return results
+
+    def goal_reached(self, int_index, float_cumcost):
+        return 2 if float_cumcost else 0
+
+
 def vectorize_lines(im: np.ndarray, threshold: float = 0.17, min_length=5):
     """
     Vectorizes lines from a binarized array.
@@ -274,28 +297,6 @@ def vectorize_lines(im: np.ndarray, threshold: float = 0.17, min_length=5):
     # find end points
     kernel = np.array([[1, 1, 1], [1, 10, 1], [1, 1, 1]])
     line_extrema = np.transpose(np.where((convolve2d(line_skel, kernel, mode='same') == 11) * line_skel))
-
-    class LineMCP(MCP_Connect):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            self.connections = dict()
-            self.scores = defaultdict(lambda: np.inf)
-
-        def create_connection(self, id1, id2, pos1, pos2, cost1, cost2):
-            k = (min(id1, id2), max(id1, id2))
-            s = cost1 + cost2
-            if self.scores[k] > s:
-                self.connections[k] = (pos1, pos2, s)
-                self.scores[k] = s
-
-        def get_connections(self):
-            results = []
-            for k, (pos1, pos2, s) in self.connections.items():
-                results.append(np.concatenate([self.traceback(pos1), self.traceback(pos2)[::-1]]))
-            return results
-
-        def goal_reached(self, int_index, float_cumcost):
-            return 2 if float_cumcost else 0
 
     mcp = LineMCP(~line_skel)
     try:
@@ -529,7 +530,7 @@ def calculate_polygonal_environment(im: PIL.Image.Image = None,
         tform, rotated_patch = _rotate(patch, angle, center=extrema[0], scale=scale, cval=MASK_VAL)
         # ensure to cut off padding after rotation
         x_offsets = np.sort(np.around(tform.inverse(extrema)[:, 0]).astype('int'))
-        rotated_patch = rotated_patch[:,x_offsets[0]:x_offsets[1]+1]
+        rotated_patch = rotated_patch[:, x_offsets[0]:x_offsets[1]+1]
         # infinity pad for seamcarve
         rotated_patch = np.pad(rotated_patch, ((1, 1), (0, 0)),  mode='constant', constant_values=np.inf)
         r, c = rotated_patch.shape
@@ -617,7 +618,7 @@ def calculate_polygonal_environment(im: PIL.Image.Image = None,
             # calculate magnitude-weighted average direction vector
             lengths = np.linalg.norm(np.diff(line.T), axis=0)
             p_dir = np.mean(np.diff(line.T) * lengths/lengths.sum(), axis=1)
-            p_dir = (p_dir.T / np.sqrt(np.sum(p_dir**2,axis=-1)))
+            p_dir = (p_dir.T / np.sqrt(np.sum(p_dir**2, axis=-1)))
 
             def _calc_roi(line):
                 # interpolate baseline
@@ -664,7 +665,7 @@ def calculate_polygonal_environment(im: PIL.Image.Image = None,
                         else:
                             return nearest_points(spt, t)[1]
                     else:
-                        raise Exception('No intersection with boundaries. Shapely intersection object: {}'.format(intersects.wkt))
+                        raise Exception(f'No intersection with boundaries. Shapely intersection object: {intersects.wkt}')
 
                 env_up = []
                 env_bottom = []
@@ -817,8 +818,8 @@ def _test_intersect(bp, uv, bs):
     u = bp - np.roll(bs, 2)
     v = bs - np.roll(bs, 2)
     points = []
-    for dir in ((1,-1), (-1,1)):
-        w = (uv * dir * (1,-1))[::-1]
+    for dir in ((1, -1), (-1, 1)):
+        w = (uv * dir * (1, -1))[::-1]
         z = np.dot(v, w)
         t1 = np.cross(v, u) / z
         t2 = np.dot(u, w) / z
@@ -918,8 +919,8 @@ def extract_polygons(im: Image.Image, bounds: Dict[str, Any]) -> Image:
         for line in bounds['lines']:
             pl = np.array(line['boundary'])
             baseline = np.array(line['baseline'])
-            c_min, c_max = int(pl[:,0].min()), int(pl[:,0].max())
-            r_min, r_max = int(pl[:,1].min()), int(pl[:,1].max())
+            c_min, c_max = int(pl[:, 0].min()), int(pl[:, 0].max())
+            r_min, r_max = int(pl[:, 1].min()), int(pl[:, 1].max())
 
             if (pl < 0).any() or (pl.max(axis=0)[::-1] >= im.shape[:2]).any():
                 raise KrakenInputException('Line polygon outside of image bounds')
@@ -934,18 +935,18 @@ def extract_polygons(im: Image.Image, bounds: Dict[str, Any]) -> Image:
                     warnings.simplefilter('ignore', RuntimeWarning)
                     slope, _, _, _, _ = linregress(baseline[:, 0], baseline[:, 1])
                 if np.isnan(slope):
-                    p_dir = np.array([0., np.sign(np.diff(baseline[(0, -1),1])).item()*1.])
+                    p_dir = np.array([0., np.sign(np.diff(baseline[(0, -1), 1])).item()*1.])
                 else:
-                    p_dir = np.array([1, np.sign(np.diff(baseline[(0, -1),0])).item()*slope])
-                    p_dir = (p_dir.T / np.sqrt(np.sum(p_dir**2,axis=-1)))
+                    p_dir = np.array([1, np.sign(np.diff(baseline[(0, -1), 0])).item()*slope])
+                    p_dir = (p_dir.T / np.sqrt(np.sum(p_dir**2, axis=-1)))
                 angle = np.arctan2(p_dir[1], p_dir[0])
                 patch = im[r_min:r_max+1, c_min:c_max+1].copy()
                 offset_polygon = pl - (c_min, r_min)
-                r, c = draw.polygon(offset_polygon[:,1], offset_polygon[:,0])
+                r, c = draw.polygon(offset_polygon[:, 1], offset_polygon[:, 0])
                 mask = np.zeros(patch.shape[:2], dtype=np.bool)
                 mask[r, c] = True
                 patch[mask != True] = 0
-                extrema = offset_polygon[(0,-1),:]
+                extrema = offset_polygon[(0, -1), :]
                 # scale line image to max 600 pixel width
                 tform, rotated_patch = _rotate(patch, angle, center=extrema[0], scale=1.0, cval=0)
                 i = Image.fromarray(rotated_patch.astype('uint8'))
@@ -958,7 +959,7 @@ def extract_polygons(im: Image.Image, bounds: Dict[str, Any]) -> Image:
 
                 bl = zip(baseline[:-1:], baseline[1::])
                 bl = [geom.LineString(x) for x in bl]
-                cum_lens = np.cumsum([0] + [l.length for l in bl])
+                cum_lens = np.cumsum([0] + [line.length for line in bl])
                 # distance of intercept from start point and number of line segment
                 control_pts = []
                 for point in pl.geoms:
