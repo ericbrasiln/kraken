@@ -633,8 +633,10 @@ def calculate_polygonal_environment(im: PIL.Image.Image = None,
                 upper_bounds_intersects = []
                 bottom_bounds_intersects = []
                 for point in ip_line:
-                    upper_bounds_intersects.append(_ray_intersect_boundaries(point, (p_dir*(-1, 1))[::-1], bounds+1).astype('int'))
-                    bottom_bounds_intersects.append(_ray_intersect_boundaries(point, (p_dir*(1, -1))[::-1], bounds+1).astype('int'))
+                    upper_bounds_intersects.append(_ray_intersect_boundaries(
+                        point, (p_dir*(-1, 1))[::-1], bounds+1).astype('int'))
+                    bottom_bounds_intersects.append(_ray_intersect_boundaries(
+                        point, (p_dir*(1, -1))[::-1], bounds+1).astype('int'))
                 # build polygon between baseline and bbox intersects
                 upper_polygon = geom.Polygon(ip_line.tolist() + upper_bounds_intersects)
                 bottom_polygon = geom.Polygon(ip_line.tolist() + bottom_bounds_intersects)
@@ -671,8 +673,10 @@ def calculate_polygonal_environment(im: PIL.Image.Image = None,
                 env_bottom = []
                 # find orthogonal (to linear regression) intersects with adjacent objects to complete roi
                 for point, upper_bounds_intersect, bottom_bounds_intersect in zip(ip_line, upper_bounds_intersects, bottom_bounds_intersects):
-                    upper_limit = _find_closest_point(point, geom.LineString([point, upper_bounds_intersect]).intersection(side_a))
-                    bottom_limit = _find_closest_point(point, geom.LineString([point, bottom_bounds_intersect]).intersection(side_b))
+                    upper_limit = _find_closest_point(point, geom.LineString(
+                        [point, upper_bounds_intersect]).intersection(side_a))
+                    bottom_limit = _find_closest_point(point, geom.LineString(
+                        [point, bottom_bounds_intersect]).intersection(side_b))
                     env_up.append(upper_limit.coords[0])
                     env_bottom.append(bottom_limit.coords[0])
                 env_up = np.array(env_up, dtype='uint')
@@ -858,7 +862,8 @@ def compute_polygon_section(baseline, boundary, dist1, dist2):
     # extend first/last segment of baseline if not on polygon boundary
     if boundary_pol.contains(geom.Point(bl[0])):
         logger.debug(f'Extending leftmost end of baseline {bl} to polygon boundary')
-        l_point = boundary_pol.boundary.intersection(geom.LineString([(bl[0][0]-10*(bl[1][0]-bl[0][0]), bl[0][1]-10*(bl[1][1]-bl[0][1])), bl[0]]))
+        l_point = boundary_pol.boundary.intersection(geom.LineString(
+            [(bl[0][0]-10*(bl[1][0]-bl[0][0]), bl[0][1]-10*(bl[1][1]-bl[0][1])), bl[0]]))
         # intersection is incidental with boundary so take closest point instead
         if l_point.type != 'Point':
             bl[0] = np.array(nearest_points(geom.Point(bl[0]), boundary_pol)[1], 'int')
@@ -866,7 +871,8 @@ def compute_polygon_section(baseline, boundary, dist1, dist2):
             bl[0] = np.array(l_point, 'int')
     if boundary_pol.contains(geom.Point(bl[-1])):
         logger.debug(f'Extending rightmost end of baseline {bl} to polygon boundary')
-        r_point = boundary_pol.boundary.intersection(geom.LineString([(bl[-1][0]-10*(bl[-2][0]-bl[-1][0]), bl[-1][1]-10*(bl[-2][1]-bl[-1][1])), bl[-1]]))
+        r_point = boundary_pol.boundary.intersection(geom.LineString(
+            [(bl[-1][0]-10*(bl[-2][0]-bl[-1][0]), bl[-1][1]-10*(bl[-2][1]-bl[-1][1])), bl[-1]]))
         if r_point.type != 'Point':
             bl[-1] = np.array(nearest_points(geom.Point(bl[-1]), boundary_pol)[1], 'int')
         else:
