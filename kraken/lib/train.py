@@ -166,6 +166,7 @@ class TrainScheduler(object):
     """
     Implements learning rate scheduling.
     """
+
     def __init__(self, optimizer: torch.optim.Optimizer) -> None:
         self.steps = []
         self.lengths = []
@@ -245,6 +246,7 @@ class EarlyStopping(TrainStopper):
     Early stopping to terminate training when validation loss doesn't improve
     over a certain time.
     """
+
     def __init__(self, min_delta: float = None, lag: int = 1000) -> None:
         """
         Args:
@@ -271,7 +273,7 @@ class EarlyStopping(TrainStopper):
         self.wait += 1
 
         if self.auto_delta:
-            self.min_delta = (1 - self.best_loss)/20
+            self.min_delta = (1 - self.best_loss) / 20
             logger.debug('Rescaling early stopping loss to {}'.format(self.min_delta))
         if np.isclose(1., val_loss.cpu().numpy()):
             logger.debug('Validation loss is close to perfect. Triggering early stopping.')
@@ -290,6 +292,7 @@ class EpochStopping(TrainStopper):
     """
     Dumb stopping after a fixed number of iterations.
     """
+
     def __init__(self, epochs: int) -> None:
         """
         Args:
@@ -315,6 +318,7 @@ class NoStopping(TrainStopper):
     """
     Never stops training.
     """
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -363,7 +367,7 @@ def recognition_evaluator_fn(model, val_loader, device):
     rec = models.TorchSeqRecognizer(model, device=device)
     chars, error = compute_error(rec, val_loader)
     model.train()
-    accuracy = ((chars-error)/(chars + np.finfo(np.float).eps))
+    accuracy = ((chars - error) / (chars + np.finfo(np.float).eps))
     return {'val_metric': accuracy, 'accuracy': accuracy, 'chars': chars, 'error': error}
 
 
@@ -398,11 +402,11 @@ def baseline_label_evaluator_fn(model, val_loader, device):
     # all_positives = tp + fp
     # actual_positives = tp + fn
     # true_positivies = tp
-    pixel_accuracy = corrects.sum()/all_n.sum()
-    mean_accuracy = torch.mean(corrects/all_n)
-    iu = (intersections+smooth)/(unions+smooth)
+    pixel_accuracy = corrects.sum() / all_n.sum()
+    mean_accuracy = torch.mean(corrects / all_n)
+    iu = (intersections + smooth) / (unions + smooth)
     mean_iu = torch.mean(iu)
-    freq_iu = torch.sum(cls_cnt/cls_cnt.sum() * iu)
+    freq_iu = torch.sum(cls_cnt / cls_cnt.sum() * iu)
     return {'accuracy': pixel_accuracy,
             'mean_acc': mean_accuracy,
             'mean_iu': mean_iu,
@@ -414,6 +418,7 @@ class KrakenTrainer(object):
     """
     Class encapsulating the recognition model training process.
     """
+
     def __init__(self,
                  model: vgsl.TorchVGSLModel,
                  optimizer: torch.optim.Optimizer,
@@ -727,7 +732,7 @@ class KrakenTrainer(object):
             gt_set.encode(codec)
             message('Slicing and dicing model ', nl=False)
             # now we can create a new model
-            spec = '[{} O1c{}]'.format(spec[1:-1], gt_set.codec.max_label()+1)
+            spec = '[{} O1c{}]'.format(spec[1:-1], gt_set.codec.max_label() + 1)
             logger.info(f'Appending {spec} to existing model {nn.spec} after {append}')
             nn.append(append, spec)
             nn.add_codec(gt_set.codec)
@@ -754,7 +759,7 @@ class KrakenTrainer(object):
                     codec = codec.add_labels(alpha_diff)
                     nn.add_codec(codec)
                     logger.info(f'Resizing last layer in network to {codec.max_label()+1} outputs')
-                    nn.resize_output(codec.max_label()+1)
+                    nn.resize_output(codec.max_label() + 1)
                     gt_set.encode(nn.codec)
                     message('\u2713', fg='green')
                 elif resize == 'both':
@@ -765,7 +770,7 @@ class KrakenTrainer(object):
                     logger.info(f'Deleting {len(del_labels)} output classes from network '
                                 f'({len(codec)-len(del_labels)} retained)')
                     gt_set.encode(ncodec)
-                    nn.resize_output(ncodec.max_label()+1, del_labels)
+                    nn.resize_output(ncodec.max_label() + 1, del_labels)
                     message('\u2713', fg='green')
                 else:
                     logger.error(f'invalid resize parameter value {resize}')
@@ -773,7 +778,7 @@ class KrakenTrainer(object):
         else:
             gt_set.encode(codec)
             logger.info(f'Creating new model {spec} with {gt_set.codec.max_label()+1} outputs')
-            spec = '[{} O1c{}]'.format(spec[1:-1], gt_set.codec.max_label()+1)
+            spec = '[{} O1c{}]'.format(spec[1:-1], gt_set.codec.max_label() + 1)
             nn = vgsl.TorchVGSLModel(spec)
             # initialize weights
             message('Initializing model ', nl=False)
@@ -810,7 +815,8 @@ class KrakenTrainer(object):
                                 pin_memory=True,
                                 collate_fn=collate_sequences)
 
-        logger.debug('Constructing {} optimizer (lr: {}, momentum: {})'.format(hyper_params['optimizer'], hyper_params['lrate'], hyper_params['momentum']))
+        logger.debug('Constructing {} optimizer (lr: {}, momentum: {})'.format(
+            hyper_params['optimizer'], hyper_params['lrate'], hyper_params['momentum']))
 
         # updates model's hyper params with users defined
         nn.hyper_params = hyper_params
@@ -1039,12 +1045,15 @@ class KrakenTrainer(object):
             if gt_set.class_mapping['baselines'].keys() != nn.user_metadata['class_mapping']['baselines'].keys() or \
                gt_set.class_mapping['regions'].keys() != nn.user_metadata['class_mapping']['regions'].keys():
 
-                bl_diff = set(gt_set.class_mapping['baselines'].keys()).symmetric_difference(set(nn.user_metadata['class_mapping']['baselines'].keys()))
-                regions_diff = set(gt_set.class_mapping['regions'].keys()).symmetric_difference(set(nn.user_metadata['class_mapping']['regions'].keys()))
+                bl_diff = set(gt_set.class_mapping['baselines'].keys()).symmetric_difference(
+                    set(nn.user_metadata['class_mapping']['baselines'].keys()))
+                regions_diff = set(gt_set.class_mapping['regions'].keys()).symmetric_difference(
+                    set(nn.user_metadata['class_mapping']['regions'].keys()))
 
                 if resize == 'fail':
                     logger.error(f'Training data and model class mapping differ (bl: {bl_diff}, regions: {regions_diff}')
-                    raise KrakenInputException(f'Training data and model class mapping differ (bl: {bl_diff}, regions: {regions_diff}')
+                    raise KrakenInputException(
+                        f'Training data and model class mapping differ (bl: {bl_diff}, regions: {regions_diff}')
                 elif resize == 'add':
                     new_bls = gt_set.class_mapping['baselines'].keys() - nn.user_metadata['class_mapping']['baselines'].keys()
                     new_regions = gt_set.class_mapping['regions'].keys() - nn.user_metadata['class_mapping']['regions'].keys()
@@ -1074,7 +1083,8 @@ class KrakenTrainer(object):
 
                     del_indices = [nn.user_metadata['class_mapping']['baselines'][x] for x in del_bls]
                     del_indices.extend(nn.user_metadata['class_mapping']['regions'][x] for x in del_regions)
-                    nn.resize_output(cls_idx + len(new_bls) + len(new_regions) - len(del_bls) - len(del_regions) + 1, del_indices)
+                    nn.resize_output(cls_idx + len(new_bls) + len(new_regions) -
+                                     len(del_bls) - len(del_regions) + 1, del_indices)
 
                     # delete old baseline/region types
                     cls_idx = min(min(nn.user_metadata['class_mapping']['baselines'].values()) if nn.user_metadata['class_mapping']['baselines'] else np.inf,
